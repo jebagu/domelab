@@ -9,12 +9,14 @@ import { debugLog, measureAsync } from "../utils/debug";
 const structureGreen = "#5eead4";
 const darkBackground = "#071014";
 const plainBackground = "#ffffff";
-const lineColor = "#111111";
-const selectedLineColor = "#0f766e";
+const blackLineColor = "#111111";
+const pinkLineColor = "#f75ba7";
+const selectedBlackLineColor = "#0f766e";
+const selectedPinkLineColor = "#be185d";
 
 export type ViewCameraMode = "plan" | "elevation" | "isometric";
 export type ViewProjectionMode = "perspective" | "axonometric";
-export type ViewRenderStyle = "color" | "plain-lines";
+export type ViewRenderStyle = "color" | "pink-lines" | "plain-lines";
 
 export interface DomeSceneHandle {
   exportPng: () => Promise<Blob | null>;
@@ -163,6 +165,7 @@ export const DomeScene = forwardRef<DomeSceneHandle, DomeSceneProps>(function Do
             nodes={built.geometry.nodes}
             groups={built.bom.strutGroups}
             groupByEdge={groupByEdge}
+            renderStyle={renderStyle}
             selection={selection}
             clippingPlanes={clippingPlanes}
             onSelect={onSelect}
@@ -217,7 +220,7 @@ const SceneRuntimeBridge = ({
   const { camera, gl, scene, size, invalidate } = useThree();
 
   useEffect(() => {
-    const backgroundColor = renderStyle === "plain-lines" ? plainBackground : darkBackground;
+    const backgroundColor = renderStyle === "color" ? darkBackground : plainBackground;
     scene.background = new THREE.Color(backgroundColor);
     if (fogDensity <= 0) {
       scene.fog = null;
@@ -420,6 +423,7 @@ interface PlainLineSegmentsProps {
   nodes: Node[];
   groups: Array<{ id: string; edgeIds: string[] }>;
   groupByEdge: Map<string, { id: string; index: number; cost: number | null }>;
+  renderStyle: Extract<ViewRenderStyle, "pink-lines" | "plain-lines">;
   selection: Selection;
   clippingPlanes: THREE.Plane[];
   onSelect: (selection: Selection) => void;
@@ -430,12 +434,14 @@ const PlainLineSegments = ({
   nodes,
   groups,
   groupByEdge,
+  renderStyle,
   selection,
   clippingPlanes,
   onSelect
 }: PlainLineSegmentsProps) => {
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node.position])), [nodes]);
   const selectedEdgeIds = useMemo(() => selectedEdges(selection, groups), [selection, groups]);
+  const palette = wireframePalette(renderStyle);
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const colors: number[] = [];
@@ -444,14 +450,14 @@ const PlainLineSegments = ({
       const end = nodeMap.get(edge.nodeB);
       if (!start || !end) return;
       positions.push(...start, ...end);
-      const color = new THREE.Color(selectedEdgeIds.has(edge.id) ? selectedLineColor : lineColor);
+      const color = new THREE.Color(selectedEdgeIds.has(edge.id) ? palette.selectedLine : palette.line);
       colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
     });
     const buffer = new THREE.BufferGeometry();
     buffer.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     buffer.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     return buffer;
-  }, [edges, nodeMap, selectedEdgeIds]);
+  }, [edges, nodeMap, palette.line, palette.selectedLine, selectedEdgeIds]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -466,7 +472,7 @@ const PlainLineSegments = ({
         onSelect({ type: "edge", id: edge.id, groupId: groupByEdge.get(edge.id)?.id });
       }}
     >
-      <lineBasicMaterial color={lineColor} vertexColors clippingPlanes={clippingPlanes} fog />
+      <lineBasicMaterial color={palette.line} vertexColors clippingPlanes={clippingPlanes} fog />
     </lineSegments>
   );
 };
@@ -683,3 +689,14 @@ const renderedStrutRadius = (strutDiameterMm: number, radius: number): number =>
   const maximumVisible = radius * 0.018;
   return Math.max(minimumVisible, Math.min(maximumVisible, physicalRadius));
 };
+
+const wireframePalette = (renderStyle: Extract<ViewRenderStyle, "pink-lines" | "plain-lines">) =>
+  renderStyle === "pink-lines"
+    ? {
+        line: pinkLineColor,
+        selectedLine: selectedPinkLineColor
+      }
+    : {
+        line: blackLineColor,
+        selectedLine: selectedBlackLineColor
+      };

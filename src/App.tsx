@@ -520,8 +520,9 @@ const ViewportToolbar = ({
       <Segmented
         value={renderStyle}
         options={[
-          ["color", "Color"],
-          ["plain-lines", "Plain Lines"]
+          ["color", "Green"],
+          ["pink-lines", "Pink"],
+          ["plain-lines", "B&W"]
         ]}
         onChange={(value) => setRenderStyle(value as ViewRenderStyle)}
       />
