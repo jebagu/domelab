@@ -1,5 +1,6 @@
 import { defaultProject } from "./defaultProject";
 import type { ConnectorSystem, ProjectState, StructurePattern } from "../types";
+import { derivePatternFromLegacy, deriveSurfaceFromLegacy, normalizeProjectState } from "../configuration";
 
 // GBP/USD derived from ECB reference rates published on 2026-04-21:
 // EUR/USD = 1.1767 and EUR/GBP = 0.87035, so GBP/USD = 1.351984833687597.
@@ -535,12 +536,23 @@ function preset(id: string, location: string, note: string, options: PresetOptio
     };
   }
   if (options.reference) state.reference = options.reference;
+  state.surface = deriveSurfaceFromLegacy(state.geometry);
+  state.pattern = derivePatternFromLegacy(state);
+  const normalizedState = normalizeProjectState(state);
+  normalizedState.geometry.pattern = options.pattern;
+  normalizedState.geometry.shape = options.shape ?? normalizedState.geometry.shape;
+  normalizedState.geometry.sphereCoverage = coverage;
+  normalizedState.geometry.flatBase = options.flatBase ?? normalizedState.geometry.flatBase;
+  normalizedState.geometry.cutPlaneZ = cutPlaneZ;
+  normalizedState.geometry.topCutPlaneZ = options.topCutRatio !== undefined ? radius * options.topCutRatio : radius;
+  normalizedState.geometry.bottomCutPlaneZ =
+    options.bottomCutRatio !== undefined ? radius * options.bottomCutRatio : cutPlaneZ;
   return {
     id,
     name: `${id} - ${location}`,
     location,
     note,
-    state
+    state: normalizedState
   };
 }
 

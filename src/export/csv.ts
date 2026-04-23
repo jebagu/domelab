@@ -1,4 +1,5 @@
 import type { BuiltProject, ProjectState } from "../types";
+import { configurationSummaryLine, patternKindLabel, surfaceKindLabel, surfacePrimaryDiameterM } from "../configuration";
 
 export const createBomCsv = (built: BuiltProject, state: ProjectState): string => {
   const lines: string[][] = [
@@ -6,10 +7,12 @@ export const createBomCsv = (built: BuiltProject, state: ProjectState): string =
     ["Structural disclaimer", "This BOM is a geometric and fabrication estimate. It is not a structural engineering certification."],
     [],
     ["Settings"],
-    ["Pattern", state.geometry.pattern],
-    ["Shape", state.geometry.shape],
+    ["Surface geometry", surfaceKindLabel(state.surface.kind)],
+    ["Pattern / structural family", patternKindLabel(state.pattern.kind)],
+    ["Node treatment", state.nodes.kind],
     ["Connector system", state.connectorSystem],
-    ["Diameter (m)", state.geometry.diameterM.toString()],
+    ["Primary diameter (m)", surfacePrimaryDiameterM(state.surface).toString()],
+    ["Summary", configurationSummaryLine(state)],
     [],
     [
       "Strut group",

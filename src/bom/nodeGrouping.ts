@@ -5,6 +5,7 @@ export const groupNodes = (nodes: Node[], state: ProjectState): NodeGroup[] => {
   nodes.forEach((node) => {
     const key = [
       state.connectorSystem,
+      state.nodes.kind,
       node.valence,
       node.role,
       state.material.materialName,
@@ -42,6 +43,7 @@ const nodeLabel = (node: Node): string => {
 };
 
 const connectorSpecificNodeKey = (state: ProjectState): string => {
+  if (state.nodes.kind === "rings") return `ring-${state.nodes.rings.ringDiameterMm}-${state.nodes.rings.ringTubeDiameterMm}`;
   if (state.connectorSystem === "ball-hub") return `ball-${state.connectors.ballHub.ballDiameterMm}`;
   if (state.connectorSystem === "welded-node") return `shell-${state.connectors.weldedNode.nodeShellCost}`;
   return "plate-or-overlap";
@@ -61,6 +63,9 @@ const nodeUnitCost = (valence: number, state: ProjectState): number | null => {
 };
 
 const nodeFabricationNote = (valence: number, state: ProjectState): string => {
+  if (state.nodes.kind === "rings") {
+    return `${valence} struts attach to a local tangent-plane ring node (${state.nodes.rings.ringDiameterMm} mm diameter).`;
+  }
   if (state.connectorSystem === "ball-hub") return `${valence} sockets/adapters on configurable ball hub.`;
   if (state.connectorSystem === "welded-node") return `${valence} coped members welded to node shell or cluster.`;
   return `${valence} flattened drilled ends converge at bolted node or overlap joint.`;

@@ -2,7 +2,7 @@ import { Grid, OrbitControls, OrthographicCamera, PerspectiveCamera } from "@rea
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
-import type { BuiltProject, DisplayMode, Edge, Node, Selection } from "../types";
+import type { BuiltProject, DisplayMode, Edge, Node, NodeSettings, Selection } from "../types";
 import { valenceColor } from "../utils/colors";
 import { debugLog, measureAsync } from "../utils/debug";
 
@@ -28,6 +28,7 @@ interface DomeSceneProps {
   selection: Selection;
   spin: boolean;
   strutDiameterMm: number;
+  nodeSettings: NodeSettings;
   cameraView: ViewCameraMode;
   projectionMode: ViewProjectionMode;
   renderStyle: ViewRenderStyle;
@@ -44,6 +45,7 @@ export const DomeScene = forwardRef<DomeSceneHandle, DomeSceneProps>(function Do
     selection,
     spin,
     strutDiameterMm,
+    nodeSettings,
     cameraView,
     projectionMode,
     renderStyle,
@@ -150,26 +152,50 @@ export const DomeScene = forwardRef<DomeSceneHandle, DomeSceneProps>(function Do
               clippingPlanes={clippingPlanes}
               onSelect={onSelect}
             />
-            <NodeInstances
+            {nodeSettings.kind === "rings" && nodeSettings.rings.showFullRingGeometry && (
+              <RingInstances
+                nodes={built.geometry.nodes}
+                renderStyle={renderStyle}
+                clippingPlanes={clippingPlanes}
+                selection={selection}
+                onSelect={onSelect}
+              />
+            )}
+            {nodeSettings.kind === "points" && nodeSettings.points.showNodeMarkers && (
+              <NodeInstances
+                nodes={built.geometry.nodes}
+                groupByNode={groupByNode}
+                displayMode={displayMode}
+                selection={selection}
+                clippingPlanes={clippingPlanes}
+                pointSizeMm={nodeSettings.points.pointSizeMm}
+                nodeStyle={nodeSettings.points.nodeStyle}
+                onSelect={onSelect}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <PlainLineSegments
+              edges={built.geometry.edges}
               nodes={built.geometry.nodes}
-              groupByNode={groupByNode}
-              displayMode={displayMode}
+              groups={built.bom.strutGroups}
+              groupByEdge={groupByEdge}
+              renderStyle={renderStyle}
               selection={selection}
               clippingPlanes={clippingPlanes}
               onSelect={onSelect}
             />
+            {nodeSettings.kind === "rings" && nodeSettings.rings.showFullRingGeometry && (
+              <RingInstances
+                nodes={built.geometry.nodes}
+                renderStyle={renderStyle}
+                clippingPlanes={clippingPlanes}
+                selection={selection}
+                onSelect={onSelect}
+              />
+            )}
           </>
-        ) : (
-          <PlainLineSegments
-            edges={built.geometry.edges}
-            nodes={built.geometry.nodes}
-            groups={built.bom.strutGroups}
-            groupByEdge={groupByEdge}
-            renderStyle={renderStyle}
-            selection={selection}
-            clippingPlanes={clippingPlanes}
-            onSelect={onSelect}
-          />
         )}
       </group>
       {renderStyle === "color" && (
@@ -311,8 +337,8 @@ const StrutInstances = ({
     const dummy = new THREE.Object3D();
     const yAxis = new THREE.Vector3(0, 1, 0);
     edges.forEach((edge, index) => {
-      const a = new THREE.Vector3(...nodeMap.get(edge.nodeA)!.position);
-      const b = new THREE.Vector3(...nodeMap.get(edge.nodeB)!.position);
+      const a = new THREE.Vector3(...(edge.renderStart ?? nodeMap.get(edge.nodeA)!.position));
+      const b = new THREE.Vector3(...(edge.renderEnd ?? nodeMap.get(edge.nodeB)!.position));
       const mid = a.clone().add(b).multiplyScalar(0.5);
       const direction = b.clone().sub(a);
       const length = direction.length();
@@ -362,12 +388,24 @@ interface NodeInstancesProps {
   displayMode: DisplayMode;
   selection: Selection;
   clippingPlanes: THREE.Plane[];
+  pointSizeMm: number;
+  nodeStyle: NodeSettings["points"]["nodeStyle"];
   onSelect: (selection: Selection) => void;
 }
 
-const NodeInstances = ({ nodes, groupByNode, displayMode, selection, clippingPlanes, onSelect }: NodeInstancesProps) => {
+const NodeInstances = ({
+  nodes,
+  groupByNode,
+  displayMode,
+  selection,
+  clippingPlanes,
+  pointSizeMm,
+  nodeStyle,
+  onSelect
+}: NodeInstancesProps) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const selectedNodeIds = useMemo(() => selectedNodes(selection, groupByNode), [selection, groupByNode]);
+  const scaleMultiplier = nodeStyle === "emphasis" ? 1.3 : nodeStyle === "simple" ? 0.8 : 1;
 
   useEffect(() => {
     const mesh = meshRef.current;
@@ -376,7 +414,8 @@ const NodeInstances = ({ nodes, groupByNode, displayMode, selection, clippingPla
     nodes.forEach((node, index) => {
       dummy.position.set(...node.position);
       const selected = selectedNodeIds.has(node.id);
-      const radius = selected ? 0.072 : node.role === "crown" || node.role === "base" ? 0.052 : 0.043;
+      const baseRadius = Math.max(0.01, pointSizeMm / 2000) * scaleMultiplier;
+      const radius = selected ? baseRadius * 1.35 : node.role === "crown" || node.role === "base" ? baseRadius * 1.1 : baseRadius;
       dummy.scale.setScalar(radius);
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
@@ -392,7 +431,7 @@ const NodeInstances = ({ nodes, groupByNode, displayMode, selection, clippingPla
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [displayMode, nodes, selectedNodeIds]);
+  }, [displayMode, nodeStyle, nodes, pointSizeMm, scaleMultiplier, selectedNodeIds]);
 
   return (
     <instancedMesh
@@ -415,6 +454,65 @@ const NodeInstances = ({ nodes, groupByNode, displayMode, selection, clippingPla
         clippingPlanes={clippingPlanes}
       />
     </instancedMesh>
+  );
+};
+
+const RingInstances = ({
+  nodes,
+  renderStyle,
+  clippingPlanes,
+  selection,
+  onSelect
+}: {
+  nodes: Node[];
+  renderStyle: ViewRenderStyle;
+  clippingPlanes: THREE.Plane[];
+  selection: Selection;
+  onSelect: (selection: Selection) => void;
+}) => {
+  const materialColor = renderStyle === "pink-lines" ? pinkLineColor : renderStyle === "plain-lines" ? blackLineColor : "#d6fff6";
+  const selectedColor = renderStyle === "pink-lines" ? selectedPinkLineColor : renderStyle === "plain-lines" ? selectedBlackLineColor : "#ffffff";
+
+  return (
+    <>
+      {nodes
+        .filter((node) => node.ring)
+        .map((node) => {
+          const ring = node.ring!;
+          const selected = selection.type === "node" && selection.id === node.id;
+          const basis = new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(...ring.tangentX),
+            new THREE.Vector3(...ring.tangentY),
+            new THREE.Vector3(...ring.normal)
+          );
+          const quaternion = new THREE.Quaternion().setFromRotationMatrix(basis);
+          return (
+            <mesh
+              key={node.id}
+              position={ring.center}
+              quaternion={quaternion}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelect({ type: "node", id: node.id });
+              }}
+            >
+              <torusGeometry args={[ring.diameterM / 2, Math.max(ring.tubeDiameterM / 2, 0.004), 8, 36]} />
+              {renderStyle === "color" ? (
+                <meshStandardMaterial
+                  color={selected ? selectedColor : materialColor}
+                  roughness={0.35}
+                  metalness={0.45}
+                  emissive={selected ? "#ffffff" : "#0b4a40"}
+                  emissiveIntensity={selected ? 0.2 : 0.1}
+                  clippingPlanes={clippingPlanes}
+                />
+              ) : (
+                <meshBasicMaterial color={selected ? selectedColor : materialColor} clippingPlanes={clippingPlanes} />
+              )}
+            </mesh>
+          );
+        })}
+    </>
   );
 };
 
@@ -446,8 +544,8 @@ const PlainLineSegments = ({
     const positions: number[] = [];
     const colors: number[] = [];
     edges.forEach((edge) => {
-      const start = nodeMap.get(edge.nodeA);
-      const end = nodeMap.get(edge.nodeB);
+      const start = edge.renderStart ?? nodeMap.get(edge.nodeA);
+      const end = edge.renderEnd ?? nodeMap.get(edge.nodeB);
       if (!start || !end) return;
       positions.push(...start, ...end);
       const color = new THREE.Color(selectedEdgeIds.has(edge.id) ? palette.selectedLine : palette.line);

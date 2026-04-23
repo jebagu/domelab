@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { MaterialSettings, ProjectState, Selection, ShapeMode, StructurePattern, Units } from "../types";
 import { defaultProject } from "../data/defaultProject";
+import { normalizeProjectState } from "../configuration";
 
 const storageKey = "domelab-project-state";
 const fileNameStorageKey = "domelab-project-file-name";
@@ -30,7 +31,7 @@ function loadInitialProject(): ProjectState {
   const stored = window.localStorage.getItem(storageKey);
   if (!stored) return defaultProject;
   try {
-    return mergeProject(defaultProject, JSON.parse(stored) as Partial<ProjectState>);
+    return normalizeProjectState(mergeProject(defaultProject, JSON.parse(stored) as Partial<ProjectState>));
   } catch {
     return defaultProject;
   }
@@ -153,7 +154,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   setShape: (shape) => get().updateState((state) => ({ ...state, geometry: { ...state.geometry, shape } })),
   setUnits: (units) => get().updateState((state) => ({ ...state, project: { ...state.project, units } })),
   loadProject: (projectState, fileName = newUnsavedFileName) =>
-    set({ state: mergeProject(defaultProject, projectState), fileName, selection: { type: "none" } }),
+    set({ state: normalizeProjectState(mergeProject(defaultProject, projectState)), fileName, selection: { type: "none" } }),
   saveLocal: () => {
     window.localStorage.setItem(storageKey, JSON.stringify(get().state));
     window.localStorage.setItem(fileNameStorageKey, get().fileName);

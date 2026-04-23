@@ -1,21 +1,25 @@
 import type { ProjectState } from "../types";
+import { defaultNodeSettings, defaultPatternSettings, defaultSurfaceSettings, normalizeProjectState } from "../configuration";
 
-export const defaultProject: ProjectState = {
+export const defaultProject: ProjectState = normalizeProjectState({
   project: {
     units: "metric",
     currency: "USD",
     precisionMm: 1,
     lengthGroupToleranceMm: 1
   },
+  surface: defaultSurfaceSettings,
+  pattern: defaultPatternSettings,
+  nodes: defaultNodeSettings,
   geometry: {
     pattern: "geodesic",
-    shape: "full-sphere",
+    shape: "hemisphere",
     diameterM: 6,
-    sphereCoverage: 1,
+    sphereCoverage: 0.5,
     snapCoverageToNodeLayer: false,
     flatBase: false,
-    capHeightM: 6,
-    cutPlaneZ: -3,
+    capHeightM: 3,
+    cutPlaneZ: 0,
     orientation: {
       mode: "vertex-up",
       rotationEuler: [0, 0, 0]
@@ -91,4 +95,4 @@ export const defaultProject: ProjectState = {
     pricingSummary: [],
     parts: []
   }
-};
+});

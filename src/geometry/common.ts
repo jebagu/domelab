@@ -1,10 +1,17 @@
 import type { Edge, EdgeRole, Face, GeometryResult, Node, NodeRole, ValidationMessage } from "../types";
-import { distance, sortedPairKey } from "./vector";
+import { distance, sortedPairKey, type Vec3 } from "./vector";
 
 interface RawEdge {
   a: string;
   b: string;
   role?: EdgeRole;
+  renderStart?: Vec3;
+  renderEnd?: Vec3;
+}
+
+interface GeometryMetadata {
+  nodeFrames?: Map<string, { normal: Vec3; tangentX: Vec3; tangentY: Vec3 }>;
+  topZ?: number;
 }
 
 export const createGeometryResult = (
@@ -13,7 +20,8 @@ export const createGeometryResult = (
   rawFaces: Array<[string, string, string]>,
   radius: number,
   connectorWarnings: ValidationMessage[] = [],
-  baseZ?: number
+  baseZ?: number,
+  metadata: GeometryMetadata = {}
 ): GeometryResult => {
   const usedNodeIds = new Set<string>();
   const edgeMap = new Map<string, RawEdge>();
@@ -36,12 +44,16 @@ export const createGeometryResult = (
   const nodes: Node[] = orderedIds.map((oldId, index) => {
     const id = `n${index}`;
     idMap.set(oldId, id);
+    const frame = metadata.nodeFrames?.get(oldId);
     return {
       id,
       position: positions.get(oldId)!,
-      role: classifyNodeRole(positions.get(oldId)!, radius, baseZ),
+      role: classifyNodeRole(positions.get(oldId)!, radius, baseZ, metadata.topZ),
       incidentEdgeIds: [],
-      valence: 0
+      valence: 0,
+      surfaceNormal: frame?.normal,
+      tangentX: frame?.tangentX,
+      tangentY: frame?.tangentY
     };
   });
 
@@ -59,9 +71,11 @@ export const createGeometryResult = (
       nodeA,
       nodeB,
       role: raw.role ?? inferEdgeRole(a.role, b.role),
-      modelLengthM: distance(a.position, b.position),
-      fabricationLengthM: distance(a.position, b.position),
-      cutLengthM: distance(a.position, b.position),
+      modelLengthM: distance(raw.renderStart ?? a.position, raw.renderEnd ?? b.position),
+      fabricationLengthM: distance(raw.renderStart ?? a.position, raw.renderEnd ?? b.position),
+      cutLengthM: distance(raw.renderStart ?? a.position, raw.renderEnd ?? b.position),
+      renderStart: raw.renderStart,
+      renderEnd: raw.renderEnd,
       materialProfileId: "default-profile",
       connectorSystem: "flattened-drilled-bolted",
       endConditionA: { type: "plain-cut" },
@@ -88,9 +102,9 @@ export const createGeometryResult = (
   };
 };
 
-const classifyNodeRole = (position: [number, number, number], radius: number, baseZ?: number): NodeRole => {
+const classifyNodeRole = (position: [number, number, number], radius: number, baseZ?: number, topZ = radius): NodeRole => {
   const eps = Math.max(radius * 0.001, 1e-5);
-  if (Math.abs(position[2] - radius) < eps) return "crown";
+  if (Math.abs(position[2] - topZ) < eps) return Math.abs(topZ - radius) < eps ? "crown" : "cut";
   if (baseZ !== undefined && Math.abs(position[2] - baseZ) < eps) return "base";
   if (baseZ !== undefined && Math.abs(position[2] - baseZ) < eps * 4) return "boundary";
   return "interior";

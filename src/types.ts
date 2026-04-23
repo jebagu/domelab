@@ -1,5 +1,23 @@
 export type StructurePattern = "geodesic" | "lamella" | "ribbed-rectangular";
 
+export type SurfaceGeometryKind = "spherical" | "ellipsoidal" | "onion" | "catenary" | "paraboloid";
+
+export type PatternKind =
+  | "triangles"
+  | "hexagons-pentagons"
+  | "diamonds"
+  | "penrose"
+  | "quads"
+  | "geodesic"
+  | "lamella"
+  | "schwedler-ribbed"
+  | "kiewitt"
+  | "three-way-grid"
+  | "gridshell"
+  | "reciprocal-frame";
+
+export type NodeTreatmentKind = "points" | "rings";
+
 export type ShapeMode =
   | "full-sphere"
   | "hemisphere"
@@ -19,6 +37,183 @@ export interface ProjectSettings {
   currency: string;
   precisionMm: number;
   lengthGroupToleranceMm: number;
+}
+
+export interface SphericalSurfaceSettings {
+  diameterM: number;
+  radiusM: number;
+  domeHeightM: number;
+  baseDiameterM: number;
+  topOpeningDiameterM: number;
+  verticalCutPositionM: number;
+}
+
+export interface EllipsoidalSurfaceSettings {
+  xDiameterM: number;
+  yDiameterM: number;
+  zHeightM: number;
+  truncationHeightM: number;
+  topOpeningDiameterM: number;
+}
+
+export interface OnionSurfaceSettings {
+  baseDiameterM: number;
+  shoulderHeightM: number;
+  maxBulgeDiameterM: number;
+  neckDiameterM: number;
+  apexHeightM: number;
+  overallHeightM: number;
+  topOpeningDiameterM: number;
+}
+
+export interface CatenarySurfaceSettings {
+  spanDiameterM: number;
+  heightM: number;
+  shapeFactor: number;
+  truncationHeightM: number;
+  topOpeningDiameterM: number;
+}
+
+export interface ParaboloidSurfaceSettings {
+  baseDiameterM: number;
+  heightM: number;
+  curvatureCoefficient: number;
+  truncationHeightM: number;
+  topOpeningDiameterM: number;
+}
+
+export interface SurfaceSettings {
+  kind: SurfaceGeometryKind;
+  spherical: SphericalSurfaceSettings;
+  ellipsoidal: EllipsoidalSurfaceSettings;
+  onion: OnionSurfaceSettings;
+  catenary: CatenarySurfaceSettings;
+  paraboloid: ParaboloidSurfaceSettings;
+}
+
+export interface TrianglesPatternSettings {
+  targetEdgeLengthM: number;
+  frequency: number;
+  equalEdgePreference: boolean;
+  triangulationMethod: "alternating" | "bias-left" | "bias-right" | "radial";
+}
+
+export interface HexPentPatternSettings {
+  targetCellSizeM: number;
+  pentagonDistributionMode: "icosahedral" | "crown-biased" | "uniform";
+  panelRegularityPreference: "regular" | "surface-following";
+  triangulateForStructure: boolean;
+}
+
+export interface DiamondsPatternSettings {
+  diamondWidthM: number;
+  diamondHeightM: number;
+  gridRotationDeg: number;
+  density: number;
+}
+
+export interface PenrosePatternSettings {
+  tileScaleM: number;
+  projectionMethod: "radial" | "vertical" | "normal";
+  clippingBoundaryBehavior: "trim" | "preserve-partials";
+  triangulateForStructure: boolean;
+}
+
+export interface QuadsPatternSettings {
+  uDivisions: number;
+  vDivisions: number;
+  quadAspectPreference: "balanced" | "vertical" | "horizontal";
+  diagonalBracing: boolean;
+}
+
+export interface GeodesicPatternSettings {
+  basePolyhedron: "icosahedron" | "octahedron";
+  frequency: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  subdivisionMethod: "class-I" | "class-II";
+  strutGroupingMode: "by-length" | "by-band";
+  projectToSurface: boolean;
+}
+
+export interface LamellaPatternSettings {
+  sectors: number;
+  horizontalRings: number;
+  lamellaAngleDeg: number;
+  spacingMode: "equal-angle" | "equal-height" | "equal-arc";
+}
+
+export interface SchwedlerPatternSettings {
+  meridionalRibs: number;
+  horizontalRings: number;
+  diagonalBracing: boolean;
+  ribSpacingMode: "equal-angle" | "equal-height" | "equal-arc";
+}
+
+export interface KiewittPatternSettings {
+  radialRibs: number;
+  hoopRings: number;
+  subdivisionCount: number;
+  triangulationMode: "fan" | "alternating" | "radial";
+}
+
+export interface ThreeWayGridPatternSettings {
+  gridDensity: number;
+  targetEdgeLengthM: number;
+  triangulationOrientation: "alternating" | "clockwise" | "counterclockwise";
+  ringAlignmentPreference: "balanced" | "aligned";
+}
+
+export interface GridshellPatternSettings {
+  gridSpacingM: number;
+  principalDirectionBias: number;
+  curvatureAdaptationStiffness: number;
+  shellMode: "quad" | "triangulated";
+}
+
+export interface ReciprocalFramePatternSettings {
+  membersPerRing: number;
+  overlapLengthM: number;
+  memberDepthM: number;
+  rotationalOffsetDeg: number;
+  concentricTierCount: number;
+}
+
+export interface PatternSettings {
+  kind: PatternKind;
+  triangles: TrianglesPatternSettings;
+  hexagonsPentagons: HexPentPatternSettings;
+  diamonds: DiamondsPatternSettings;
+  penrose: PenrosePatternSettings;
+  quads: QuadsPatternSettings;
+  geodesic: GeodesicPatternSettings;
+  lamella: LamellaPatternSettings;
+  schwedlerRibbed: SchwedlerPatternSettings;
+  kiewitt: KiewittPatternSettings;
+  threeWayGrid: ThreeWayGridPatternSettings;
+  gridshell: GridshellPatternSettings;
+  reciprocalFrame: ReciprocalFramePatternSettings;
+}
+
+export interface PointNodeSettings {
+  pointSizeMm: number;
+  nodeStyle: "simple" | "connector" | "emphasis";
+  showNodeMarkers: boolean;
+}
+
+export interface RingNodeSettings {
+  ringDiameterMm: number;
+  ringTubeDiameterMm: number;
+  orientationMode: "parallel-to-local-surface" | "horizontal";
+  showFullRingGeometry: boolean;
+  rotationAboutNormalDeg: number;
+  eccentricOffsetMm: number;
+  weldStubLengthMm: number;
+  maxAttachments: number | null;
+}
+
+export interface NodeSettings {
+  kind: NodeTreatmentKind;
+  points: PointNodeSettings;
+  rings: RingNodeSettings;
 }
 
 export interface GeometrySettings {
@@ -132,6 +327,9 @@ export interface ProjectReference {
 
 export interface ProjectState {
   project: ProjectSettings;
+  surface: SurfaceSettings;
+  pattern: PatternSettings;
+  nodes: NodeSettings;
   geometry: GeometrySettings;
   geodesic: GeodesicSettings;
   lamella: LamellaSettings;
@@ -150,6 +348,17 @@ export interface Node {
   role: NodeRole;
   incidentEdgeIds: string[];
   valence: number;
+  surfaceNormal?: [number, number, number];
+  tangentX?: [number, number, number];
+  tangentY?: [number, number, number];
+  ring?: {
+    center: [number, number, number];
+    diameterM: number;
+    tubeDiameterM: number;
+    normal: [number, number, number];
+    tangentX: [number, number, number];
+    tangentY: [number, number, number];
+  };
 }
 
 export type EdgeRole =
@@ -178,6 +387,8 @@ export interface Edge {
   modelLengthM: number;
   fabricationLengthM: number;
   cutLengthM: number;
+  renderStart?: [number, number, number];
+  renderEnd?: [number, number, number];
   materialProfileId: string;
   connectorSystem: ConnectorSystem;
   endConditionA: EndCondition;

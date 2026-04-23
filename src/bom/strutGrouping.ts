@@ -9,7 +9,7 @@ export const groupStruts = (edges: Edge[], state: ProjectState): StrutGroup[] =>
   edges.forEach((edge) => {
     const roundedLength = roundToTolerance(edge.cutLengthM, toleranceM);
     const key = [
-      state.geometry.pattern,
+      state.pattern.kind,
       state.material.materialName,
       state.material.profileLabel,
       edge.connectorSystem,

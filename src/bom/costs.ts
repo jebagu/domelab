@@ -42,17 +42,35 @@ export const calculateCosts = (
   const contingency = subtotal.times(contingencyPercent / 100);
   const total = subtotal.plus(contingency);
 
+  const materialRounded = number(rawMaterial);
+  const endOperationsRounded = number(endOperations);
+  const nodeConnectorsRounded = number(nodeConnectors);
+  const hardwareRounded = number(hardware);
+  const weldingRounded = number(welding);
+  const wasteRounded = number(waste);
+  const setupRounded = number(setup);
+  const contingencyRounded = number(contingency);
+
   return {
-    material: number(rawMaterial),
-    endOperations: number(endOperations),
-    nodeConnectors: number(nodeConnectors),
-    hardware: number(hardware),
-    welding: number(welding),
+    material: materialRounded,
+    endOperations: endOperationsRounded,
+    nodeConnectors: nodeConnectorsRounded,
+    hardware: hardwareRounded,
+    welding: weldingRounded,
     finishing: 0,
-    waste: number(waste),
-    setup: number(setup),
-    contingency: number(contingency),
-    total: number(total)
+    waste: wasteRounded,
+    setup: setupRounded,
+    contingency: contingencyRounded,
+    total: number(
+      new Decimal(materialRounded)
+        .plus(endOperationsRounded)
+        .plus(nodeConnectorsRounded)
+        .plus(hardwareRounded)
+        .plus(weldingRounded)
+        .plus(wasteRounded)
+        .plus(setupRounded)
+        .plus(contingencyRounded)
+    )
   };
 };
 

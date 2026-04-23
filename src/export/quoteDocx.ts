@@ -1,4 +1,5 @@
-import type { BuiltProject, ProjectState, ShapeMode, StructurePattern } from "../types";
+import type { BuiltProject, ProjectState } from "../types";
+import { configurationSummaryLine, patternDensityLabel, patternKindLabel, surfaceActiveHeightM, surfaceKindLabel, surfacePrimaryDiameterM } from "../configuration";
 import { metersToDisplay, number as formatNumber } from "../utils/format";
 import { measureAsync } from "../utils/debug";
 
@@ -279,12 +280,12 @@ export const createQuoteDocumentXml = ({
 };
 
 const createGeometrySummary = (built: BuiltProject, state: ProjectState): string[] => {
-  const coverage = resolveSphereCoverage(state);
-  const radiusM = state.geometry.diameterM / 2;
-  const overallHeightM = state.geometry.capHeightM ?? state.geometry.diameterM * coverage;
+  const primaryDiameterM = surfacePrimaryDiameterM(state.surface);
+  const overallHeightM = surfaceActiveHeightM(state.surface);
   return [
-    `Sphere size: ${metersToDisplay(state.geometry.diameterM, state.project.units)} diameter, ${metersToDisplay(radiusM, state.project.units)} radius, ${metersToDisplay(overallHeightM, state.project.units)} overall height.`,
-    `Geometry: ${patternLabel(state.geometry.pattern)} ${geometryDetailLabel(state)} configured as a ${shapeLabel(state.geometry.shape)} (${formatNumber(coverage * 100, 1)}% sphere coverage).`,
+    `Surface size: ${metersToDisplay(primaryDiameterM, state.project.units)} primary diameter and ${metersToDisplay(overallHeightM, state.project.units)} active height.`,
+    `Definition: ${configurationSummaryLine(state)}.`,
+    `Geometry: ${surfaceKindLabel(state.surface.kind)} surface with ${patternKindLabel(state.pattern.kind)} pattern (${patternDensityLabel(state)}).`,
     `Scope quantities: ${formatNumber(built.geometry.nodes.length)} nodes, ${formatNumber(built.geometry.edges.length)} struts, ${formatNumber(built.bom.strutGroups.length)} nominal strut groups.`,
     "Selected reference views and the BOM are included below for quoting. Fabrication operations, cut lengths, and end treatments are intentionally excluded."
   ];
@@ -755,40 +756,6 @@ function createCrcTable(): Uint32Array {
   return table;
 }
 
-const resolveSphereCoverage = (state: ProjectState): number => {
-  if (state.geometry.sphereCoverage !== undefined) {
-    return clamp(state.geometry.sphereCoverage, 0.5, 1);
-  }
-  if (state.geometry.shape === "full-sphere") return 1;
-  if (state.geometry.shape === "hemisphere") return 0.5;
-  if (state.geometry.capHeightM !== undefined) {
-    return clamp(state.geometry.capHeightM / state.geometry.diameterM, 0.5, 1);
-  }
-  return 1;
-};
-
-const patternLabel = (pattern: StructurePattern): string => {
-  if (pattern === "geodesic") return "Geodesic";
-  if (pattern === "lamella") return "Lamella";
-  return "Ribbed rectangular";
-};
-
-const geometryDetailLabel = (state: ProjectState): string => {
-  if (state.geometry.pattern === "geodesic") return `${state.geodesic.frequency}V`;
-  if (state.geometry.pattern === "lamella") {
-    return `${state.lamella.sectors} sectors x ${state.lamella.rings} rings`;
-  }
-  return `${state.ribbedRectangular.ribs} ribs x ${state.ribbedRectangular.rings} rings`;
-};
-
-const shapeLabel = (shape: ShapeMode): string => {
-  if (shape === "full-sphere") return "full sphere";
-  if (shape === "hemisphere") return "hemisphere";
-  if (shape === "flattened-base") return "spherical cap with flat base";
-  if (shape === "sphere-segment") return "sphere segment";
-  return "spherical cap";
-};
-
 const roleLabel = (value: string): string =>
   value
     .split("-")
@@ -820,6 +787,8 @@ const scaleVector = (value: [number, number, number], scalar: number): [number, 
   value[1] * scalar,
   value[2] * scalar
 ];
+
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 const interpolateVector = (
   start: [number, number, number],
@@ -868,7 +837,6 @@ const viewLabel = (view: QuoteViewName): string => {
 const projectionLabel = (projection: QuoteProjectionMode): string =>
   projection === "axonometric" ? "Axonometric" : "Perspective";
 
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 const escapeXml = (value: string): string =>
   value

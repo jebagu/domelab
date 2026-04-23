@@ -2,6 +2,7 @@ import type { BuiltProject, ProjectState } from "./types";
 import { buildBom } from "./bom";
 import { generateGeometry } from "./geometry";
 import { measureSync } from "./utils/debug";
+import { surfacePrimaryDiameterM } from "./configuration";
 
 export const buildProject = (state: ProjectState): BuiltProject =>
   measureSync(
@@ -16,13 +17,14 @@ export const buildProject = (state: ProjectState): BuiltProject =>
   );
 
 const summarizeState = (state: ProjectState): Record<string, unknown> => ({
-  pattern: state.geometry.pattern,
-  shape: state.geometry.shape,
-  diameterM: Number(state.geometry.diameterM.toFixed(3)),
-  sphereCoverage: state.geometry.sphereCoverage ?? null,
-  geodesicFrequency: state.geometry.pattern === "geodesic" ? state.geodesic.frequency : null,
-  lamellaSectors: state.geometry.pattern === "lamella" ? state.lamella.sectors : null,
-  lamellaRings: state.geometry.pattern === "lamella" ? state.lamella.rings : null,
-  ribCount: state.geometry.pattern === "ribbed-rectangular" ? state.ribbedRectangular.ribs : null,
-  ringCount: state.geometry.pattern === "ribbed-rectangular" ? state.ribbedRectangular.rings : null
+  surface: state.surface.kind,
+  pattern: state.pattern.kind,
+  nodes: state.nodes.kind,
+  diameterM: Number(surfacePrimaryDiameterM(state.surface).toFixed(3)),
+  heightM: Number((state.geometry.topCutPlaneZ ?? state.geometry.diameterM / 2 - (state.geometry.bottomCutPlaneZ ?? state.geometry.cutPlaneZ ?? 0)).toFixed(3)),
+  geodesicFrequency: state.pattern.kind === "geodesic" ? state.pattern.geodesic.frequency : null,
+  lamellaSectors: state.pattern.kind === "lamella" ? state.pattern.lamella.sectors : null,
+  lamellaRings: state.pattern.kind === "lamella" ? state.pattern.lamella.horizontalRings : null,
+  ribCount: state.pattern.kind === "schwedler-ribbed" ? state.pattern.schwedlerRibbed.meridionalRibs : null,
+  ringCount: state.pattern.kind === "schwedler-ribbed" ? state.pattern.schwedlerRibbed.horizontalRings : null
 });
