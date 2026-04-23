@@ -11,6 +11,7 @@ import {
   type QuoteViewName,
   type QuoteViewOption
 } from "./export/quoteDocx";
+import { createSketchupColladaBlob } from "./export/sketchupCollada";
 import { configurationSummaryLine, nodeTreatmentLabel, normalizeProjectState as normalizeProjectConfiguration, patternCategoryLabel, patternDensityLabel, patternKindLabel, surfaceKindLabel, surfacePrimaryDiameterM } from "./configuration";
 import type { BuiltProject, NodeSettings, PatternKind, ProjectState, Selection, SurfaceGeometryKind } from "./types";
 import { clearDebugLogs, debugLog, formatDebugLogEntries, getDebugLogEntries, measureAsync, subscribeDebugLogs } from "./utils/debug";
@@ -969,7 +970,9 @@ const LoadSavePanel = ({
 
 const ExportPanel = ({ built, state }: { built: BuiltProject; state: ProjectState }) => {
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [isExportingSketchup, setIsExportingSketchup] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<string | null>(null);
+  const [sketchupStatus, setSketchupStatus] = useState<string | null>(null);
   const [viewOptions, setViewOptions] = useState<QuoteViewOption[]>(() =>
     defaultQuoteViewOptions.map((option) => ({ ...option }))
   );
@@ -992,6 +995,30 @@ const ExportPanel = ({ built, state }: { built: BuiltProject; state: ProjectStat
       setQuoteStatus("DOCX export failed. Please try again.");
     } finally {
       setIsExportingDocx(false);
+    }
+  };
+
+  const handleSketchupExport = async () => {
+    setIsExportingSketchup(true);
+    setSketchupStatus("Building SketchUp DAE...");
+    try {
+      const blob = await measureAsync(
+        "app",
+        "export-sketchup-dae",
+        () => Promise.resolve(createSketchupColladaBlob(built, state)),
+        {
+          nodes: built.geometry.nodes.length,
+          struts: built.geometry.edges.length,
+          strutGroups: built.bom.strutGroups.length
+        }
+      );
+      downloadBlob("domelab-sketchup.dae", blob);
+      setSketchupStatus("SketchUp DAE downloaded.");
+    } catch (error) {
+      console.error(error);
+      setSketchupStatus("SketchUp export failed. Please try again.");
+    } finally {
+      setIsExportingSketchup(false);
     }
   };
 
@@ -1053,6 +1080,9 @@ const ExportPanel = ({ built, state }: { built: BuiltProject; state: ProjectStat
         <button onClick={handleDocxExport} disabled={isExportingDocx || selectedViewCount === 0}>
           {isExportingDocx ? "Building DOCX..." : "Export Quote DOCX"}
         </button>
+        <button onClick={handleSketchupExport} disabled={isExportingSketchup || built.geometry.edges.length === 0}>
+          {isExportingSketchup ? "Building DAE..." : "Export SketchUp DAE"}
+        </button>
         <button
           onClick={() => {
             debugLog("app", "export-bom-csv", {
@@ -1081,6 +1111,7 @@ const ExportPanel = ({ built, state }: { built: BuiltProject; state: ProjectStat
       </p>
       {selectedViewCount === 0 && <p className="disclaimer">Select at least one view to enable DOCX export.</p>}
       {quoteStatus && <p className="disclaimer">{quoteStatus}</p>}
+      {sketchupStatus && <p className="disclaimer">{sketchupStatus}</p>}
     </div>
   );
 };
