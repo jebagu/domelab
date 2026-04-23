@@ -220,7 +220,7 @@ const SceneRuntimeBridge = ({
   const { camera, gl, scene, size, invalidate } = useThree();
 
   useEffect(() => {
-    const backgroundColor = renderStyle === "color" ? darkBackground : plainBackground;
+    const backgroundColor = renderStyle === "plain-lines" ? plainBackground : darkBackground;
     scene.background = new THREE.Color(backgroundColor);
     if (fogDensity <= 0) {
       scene.fog = null;
