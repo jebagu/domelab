@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  deployments: read
+  deployments: write
   pages: write
   id-token: write
 
@@ -65,12 +65,12 @@ jobs:
           set -eu
 
           gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages&per_page=10" \
-            --jq '.[] | select(.sha != env.CURRENT_SHA) | .sha' |
-          while IFS= read -r sha; do
-            [ -n "$sha" ] || continue
-            status="$(gh api "repos/${GITHUB_REPOSITORY}/pages/deployments/${sha}" --jq '.status' 2>/dev/null || true)"
-            if [ "$status" = "updating_pages" ]; then
-              gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/deployments/${sha}/cancel"
+            --jq '.[] | select(.sha != env.CURRENT_SHA) | .id' |
+          while IFS= read -r deployment_id; do
+            [ -n "$deployment_id" ] || continue
+            state="$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${deployment_id}/statuses" --jq '.[0].state' 2>/dev/null || true)"
+            if [ "$state" = "waiting" ] || [ "$state" = "queued" ] || [ "$state" = "in_progress" ]; then
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${deployment_id}/statuses" -f state=inactive >/dev/null
             fi
           done
 
